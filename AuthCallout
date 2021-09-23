@@ -1,0 +1,92 @@
+global class AuthCallout implements Schedulable{
+
+    public static String prueba {get; set;}
+    public static String [] name {get; set;}
+    public static String rellenar {get; set;}
+    public static String [] imprimir {get;set;}
+    public static Contact contacto {get;set;}
+    public static List <Contact> buscarContacto {get;set;}
+    public static String today;
+    //public static HttpCalloutMock mock = null;
+    
+    global void execute(SchedulableContext ctx) {
+       basicAuthCallout();
+    } 
+    
+    @future(callout=true)
+    public static void basicAuthCallout(){
+        
+        DateTime todaysDate = System.today()+1;
+        today = todaysDate.format('yyMMdd');
+        Dom.XMLNode address;
+        HttpRequest req = new HttpRequest();
+        //req.setEndpoint('http://pshr-dv.orsa.mx:30270/PSIGW/RESTListeningConnector/PSFT_HR/CPLEX_EMPL.v1/GENIZA/200130'); test
+        req.setEndpoint('http://pshr.orsa.mx:30470/PSIGW/RESTListeningConnector/PSFT_HR/CPLEX_EMPL.v3/GENIZA/'+ today); 
+        req.setMethod('GET');
+        
+         // Specify the required user name and password to access the endpoint 
+        
+         // As well as the header and header information 
+        
+        
+         /*String username = 'geniza_app';
+         String password = 'G3niz4_@t0p3';
+        
+         Blob headerValue = Blob.valueOf(username + ':' + password);
+         String authorizationHeader = 'BASIC ' +
+         EncodingUtil.base64Encode(headerValue);*/
+         //req.setHeader('Authorization', authorizationHeader);
+        req.setTimeout(60000);
+        
+        Http http = new Http();
+        HTTPResponse res = http.send(req);
+        Dom.Document doc = res.getBodyDocument();  
+            
+        address = doc.getRootElement();
+        
+                        
+        for(Dom.XMLNode child : address.getChildElements()) {
+            
+            String emplid = child.getChildElement('EMPLID', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+            contacto = new Contact();
+            
+            buscarContacto = [Select id from Contact WHERE Emplid__c = :emplid];
+            
+            if(buscarContacto.size() > 0){
+                contacto.id = buscarContacto[0].id;
+                
+            }
+            
+                
+                //contacto.Contador__c = Integer.valueof(child.getChildElement('CONTADOR', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM.v1').getText());
+                //contacto.Emplid__c = child.getChildElement('EMPLID', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM.v1').getText();        
+                
+                
+                contacto.Contador__c = Integer.valueof(child.getChildElement('CONTADOR', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText());
+                contacto.Emplid__c = child.getChildElement('EMPLID', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();        
+                
+                
+                name = child.getChildElement('NAME', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText().split(',');        
+                if(name.size()>1){contacto.FirstName = name[1].trim();} else {contacto.FirstName = name [0].trim();}
+                contacto.LastName = name[0].trim();
+                
+                contacto.Cine__c = child.getChildElement('ADDRESS2_OTHER', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.Email = child.getChildElement('EMAIL_ADDR', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.Unidad_de_explotacion__c = child.getChildElement('OPERATING_UNIT', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.AccountId = '0011t000005nuUV';
+                contacto.Estatus__c = child.getChildElement('PER_STATUS', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.ID_DEP__c = child.getChildElement('DEPTID_TO', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.Area__c = child.getChildElement('GVT_PAR_DESCR2', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.Cargo__c = child.getChildElement('DESCR1', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+                contacto.Fecha_de_Ingreso__c = child.getChildElement('LAST_HIRE_DT', 'http://xmlns.oracle.com/Enterprise/Tools/schemas/CPLEX_EMPL_PKG.CPLEX_EJEM3.v2').getText();
+               
+                upsert contacto;
+        }
+        
+        //return res;
+    
+    }
+    
+    public void rellenar(){}
+    
+    }
